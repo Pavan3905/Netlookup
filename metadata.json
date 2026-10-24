@@ -1,0 +1,6 @@
+{
+  "name": "NetPilot - Network Management & Security Toolkit",
+  "description": "Production-grade Android network discovery, device inventory, OpenWrt router policy enforcement, DNS VPN filtering, and ethical security auditing.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
