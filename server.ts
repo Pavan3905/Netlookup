@@ -173,6 +173,78 @@ app.post('/api/diagnostics/ping', (req, res) => {
   });
 });
 
+// API: Service & Port Exposure Auditor (Bounded, Authorized Target Security Audit)
+app.post('/api/security/port-audit', async (req, res) => {
+  const { host, ports = [21, 22, 23, 25, 53, 80, 110, 139, 443, 445, 554, 3306, 3389, 5000, 8080] } = req.body;
+  if (!host || typeof host !== 'string') {
+    return res.status(400).json({ success: false, error: 'Valid host target is required' });
+  }
+
+  const targetHost = host.trim();
+  const portList = Array.isArray(ports) ? ports.slice(0, 25) : [21, 22, 23, 25, 53, 80, 443, 445, 554, 8080];
+  const startTime = Date.now();
+
+  const serviceSignatures: Record<number, { name: string; risk: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW' | 'INFO'; issue: string; remediation: string }> = {
+    21: { name: 'FTP', risk: 'HIGH', issue: 'Transmits credentials in cleartext.', remediation: 'Migrate to SFTP (port 22) or FTPS.' },
+    22: { name: 'SSH', risk: 'LOW', issue: 'Secure remote management active.', remediation: 'Ensure password auth is disabled in favor of ed25519 keys.' },
+    23: { name: 'Telnet', risk: 'CRITICAL', issue: 'Unencrypted cleartext remote terminal.', remediation: 'Disable telnetd immediately; use SSH.' },
+    25: { name: 'SMTP', risk: 'MEDIUM', issue: 'Mail transfer port open.', remediation: 'Verify relay is authenticated to prevent open relay abuse.' },
+    53: { name: 'DNS', risk: 'INFO', issue: 'Domain name resolution daemon.', remediation: 'Ensure recursion is restricted to internal clients.' },
+    80: { name: 'HTTP', risk: 'MEDIUM', issue: 'Unencrypted web traffic.', remediation: 'Enforce automatic 301 redirect to HTTPS.' },
+    110: { name: 'POP3', risk: 'HIGH', issue: 'Cleartext mail retrieval.', remediation: 'Switch to POP3S (port 995) or IMAPS (port 993).' },
+    139: { name: 'NetBIOS', risk: 'HIGH', issue: 'Legacy Windows name service exposed.', remediation: 'Disable NetBIOS over TCP/IP.' },
+    443: { name: 'HTTPS', risk: 'INFO', issue: 'Encrypted web service.', remediation: 'Verify modern TLS ciphers (TLS 1.2+).' },
+    445: { name: 'SMB', risk: 'HIGH', issue: 'Direct file sharing exposed.', remediation: 'Block SMB at perimeter; disable SMBv1.' },
+    554: { name: 'RTSP', risk: 'HIGH', issue: 'IP camera video stream exposed.', remediation: 'Require RTSP authentication and keep off public WAN.' },
+    3306: { name: 'MySQL', risk: 'HIGH', issue: 'Database port reachable on network.', remediation: 'Bind to 127.0.0.1 or require VPN/tunnel.' },
+    3389: { name: 'RDP', risk: 'HIGH', issue: 'Remote Desktop Protocol exposed.', remediation: 'Enable NLA and do not expose directly to untrusted networks.' },
+    5000: { name: 'UPnP / NAS', risk: 'MEDIUM', issue: 'Storage portal or UPnP service.', remediation: 'Audit access credentials.' },
+    8080: { name: 'HTTP-Alt', risk: 'MEDIUM', issue: 'Alternative web admin service.', remediation: 'Review if SSL is required.' }
+  };
+
+  const results = await Promise.all(
+    portList.map(port => new Promise<any>((resolve) => {
+      const socket = new net.Socket();
+      let status = 'CLOSED';
+      let latency = 0;
+      const tStart = Date.now();
+
+      socket.setTimeout(450);
+
+      socket.connect(port, targetHost, () => {
+        status = 'OPEN';
+        latency = Date.now() - tStart;
+        socket.destroy();
+        const sig = serviceSignatures[port] || { name: `Custom (${port})`, risk: 'MEDIUM', issue: 'Open network port', remediation: 'Verify service necessity.' };
+        resolve({ port, status, latencyMs: latency, ...sig });
+      });
+
+      socket.on('error', (err: any) => {
+        socket.destroy();
+        resolve({ port, status: err.code === 'ECONNREFUSED' ? 'CLOSED' : 'FILTERED' });
+      });
+
+      socket.on('timeout', () => {
+        socket.destroy();
+        resolve({ port, status: 'FILTERED' });
+      });
+    }))
+  );
+
+  const openPorts = results.filter(r => r.status === 'OPEN');
+  const durationMs = Date.now() - startTime;
+
+  res.json({
+    success: true,
+    target: targetHost,
+    scannedCount: portList.length,
+    openCount: openPorts.length,
+    openPorts,
+    durationMs,
+    timestamp: new Date().toISOString()
+  });
+});
+
 // API: TLS Certificate Inspector
 app.post('/api/diagnostics/tls', (req, res) => {
   const { host, port = 443, timeout = 4000 } = req.body;

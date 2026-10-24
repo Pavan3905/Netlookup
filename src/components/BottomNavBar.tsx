@@ -4,10 +4,10 @@ import {
   Layers, 
   Clock, 
   ShieldCheck, 
-  Wrench 
+  ShieldAlert 
 } from 'lucide-react';
 
-export type NavTabId = 'overview' | 'devices' | 'control' | 'protection' | 'tools' | 'router' | 'code';
+export type NavTabId = 'overview' | 'devices' | 'control' | 'protection' | 'tools' | 'router';
 
 interface BottomNavBarProps {
   activeTab: NavTabId;
@@ -25,7 +25,7 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
     { id: 'devices', label: 'Devices', icon: Layers },
     { id: 'control', label: 'Control', icon: Clock },
     { id: 'protection', label: 'Protection', icon: ShieldCheck },
-    { id: 'tools', label: 'Tools', icon: Wrench, badge: unresolvedFindingCount }
+    { id: 'tools', label: 'Audits', icon: ShieldAlert, badge: unresolvedFindingCount }
   ];
 
   return (

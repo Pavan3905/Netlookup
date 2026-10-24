@@ -7,7 +7,6 @@ import { AccessControlView } from './components/AccessControlView';
 import { DnsVpnView } from './components/DnsVpnView';
 import { DiagnosticsView } from './components/DiagnosticsView';
 import { RouterSettingsView } from './components/RouterSettingsView';
-import { AndroidCodeInspectorView } from './components/AndroidCodeInspectorView';
 import { 
   NetworkDevice, 
   RouterCapabilities, 
@@ -263,7 +262,6 @@ export default function App() {
         vpnActive={vpnActive}
         deviceCount={devices.length}
         onOpenRouter={() => setActiveTab('router')}
-        onOpenCode={() => setActiveTab('code')}
       />
 
       {/* Main Content Area */}
@@ -350,10 +348,6 @@ export default function App() {
             onUpdateCapabilities={setRouterCapabilities}
             gatewayIp="192.168.1.1"
           />
-        )}
-
-        {activeTab === 'code' && (
-          <AndroidCodeInspectorView />
         )}
       </main>
 

@@ -361,6 +361,19 @@ export async function executeHeaderAudit(url: string) {
   }
 }
 
+export async function executePortAudit(host: string, ports?: number[]) {
+  try {
+    const res = await fetch('/api/security/port-audit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ host, ports })
+    });
+    return await res.json();
+  } catch (err: any) {
+    return { success: false, error: err.message };
+  }
+}
+
 export async function verifyOpenWrtUbus(routerUrl: string, username: string, password?: string) {
   try {
     const res = await fetch('/api/router/openwrt/verify', {
